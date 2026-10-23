@@ -47,13 +47,20 @@ Glossary
       Open Neural Network Exchange format; the representation
       BehaVerify uses for neural leaves.
 
-..
-   Probabilistic-CTL entry is commented out while the probabilistic
-   back-end work is parked. Restore when the feature lands.
-..
+   IBT
+      Interval behavior tree. A stochastic BT whose probabilistic leaves
+      carry closed probability intervals rather than point probabilities.
+      Verified by the ``prism`` mode.
+
+   IMC
+      Interval Markov chain. The semantic model an :term:`IBT` compiles
+      into; each transition carries an interval rather than a single
+      probability.
+
    PCTL
-      Probabilistic CTL. Not currently handled by BehaVerify; planned
-      under :doc:`/user-guide/verification-strategies`.
+      Probabilistic CTL. BehaVerify's ``prism`` mode discharges bounded
+      reachability (``P[F<=H target]``) and exports PCTL property files;
+      see :doc:`/user-guide/verification-strategies`.
 
    py_trees
       `py_trees <https://py-trees.readthedocs.io/>`_, the Python BT

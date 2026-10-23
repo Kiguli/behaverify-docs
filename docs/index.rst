@@ -114,11 +114,10 @@ generators* lower that IR into six target languages. The resulting
      - On a deployed robot, has the specification just been violated?
        If yes, run the ``trigger_action``.
 
-.. Reserved future row: uncomment to re-enable when the probabilistic
-   backend lands.
-..
-   * - Probabilistic *(reserved)*
-     - :math:`\Pr[F\,\mathrm{goal}] \ge 0.9`? Currently **planned** --- see
+   * - Probabilistic (``prism`` on an interval BT)
+     - Is :math:`\Pr[F^{\le H}\,\mathrm{goal}]` high enough, given that the
+       leaf probabilities are only known to lie in a box? Reports a
+       certified interval --- see
        :doc:`user-guide/verification-strategies`.
 
 Getting started

@@ -86,16 +86,22 @@
 \node[verif, right=1.6cm of opy]    (vsim) {Simulation\\[-1pt]\scriptsize py\_trees \& nuXmv};
 \node[verif, right=1.6cm of omon]   (vmon) {Runtime monitors\\[-1pt]\scriptsize on-robot};
 
-% --- BEGIN reserved future block: uncomment to re-enable ---
-% Place a dashed "Probabilistic (planned)" node below vmon, and add an
-% additional dashed arrow from ir.east. Remember to add vsbt to the
-% ``\node[group, fit=...]`` below so the group box grows to include it.
+% --- BEGIN probabilistic block ---
+% The probabilistic back-end has landed (``prism`` mode: interval behavior
+% trees -> interval Markov chain -> robust value iteration). This figure is
+% still the pre-prism four-box version, because docs/_static/img/pipeline.png
+% is committed rather than built by Sphinx; uncommenting the node below
+% requires regenerating that PNG in the same commit, or the figure and its
+% alt text will disagree.
 %
-% \node[future, below=of vmon] (vsbt)
-%   {Probabilistic\\[-1pt]\scriptsize stochastic BTs (planned)};
+% To add it: drop the dashed "future" style for a solid verif node, and add
+% vsbt to the ``\node[group, fit=...]`` below so the group box grows.
+%
+% \node[verif, below=of vmon] (vsbt)
+%   {Probabilistic\\[-1pt]\scriptsize interval BTs (IMC)};
 % \coordinate (irright) at ($(ir.east) + (0.4cm, 0)$);
-% \draw[dashflow] (ir.east) -- (irright) |- (vsbt.west);
-% --- END reserved future block ---
+% \draw[flow] (ir.east) -- (irright) |- (vsbt.west);
+% --- END probabilistic block ---
 
 \begin{scope}[on background layer]
   \node[group, fit=(vmc)(vsim)(vmon)] (gver) {};
