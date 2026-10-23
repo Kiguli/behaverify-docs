@@ -16,8 +16,8 @@ General form
 
    behaverify <mode> <model_file> <output_location> [options...]
 
-``<mode>`` is one of ``nuxmv``, ``python``, ``cpp``, ``haskell``,
-``latex``, ``trace``, ``grid``. Case-insensitive.
+``<mode>`` is one of ``nuxmv``, ``prism``, ``python``, ``cpp``,
+``haskell``, ``latex``, ``trace``, ``grid``. Case-insensitive.
 
 Shared options
 --------------
@@ -84,6 +84,21 @@ Shared options
 .. option:: --no_var_print, --serene_print, --py_tree_print
 
    Control the per-tick printout.
+
+``prism``-mode options
+----------------------
+
+.. option:: --horizon H
+
+   The bound in :math:`\Pr[F^{\le H}\,\mathrm{target}]` (default 10).
+
+.. option:: --max_states N
+
+   Abort if the reachable state space exceeds ``N`` (default 1,000,000).
+
+.. option:: --output_name NAME
+
+   Stem for the written files (default: the model file name).
 
 ``latex``-mode options
 ----------------------

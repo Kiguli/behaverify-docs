@@ -3,8 +3,9 @@ Verification Strategies
 
 .. rst-class:: lead
 
-   BehaVerify supports three complementary strategies today: symbolic
-   model checking, simulation, and runtime monitoring.
+   BehaVerify supports four complementary strategies today: symbolic
+   model checking, simulation, runtime monitoring, and probabilistic
+   verification of interval behavior trees.
 
 .. mermaid::
 
@@ -13,9 +14,7 @@ Verification Strategies
      B --> C[SMV] --> M[nuXmv<br/>model checking]
      B --> P[py_trees] --> S[simulation]
      B --> R[monitor] --> O[runtime enforcement]
-     %% Reserved future edge (uncomment when re-introducing):
-     %% B -.-> X[planned:<br/>probabilistic]
-     %% style X stroke-dasharray: 4 3, fill:#eee
+     B --> I[IMC] --> V[robust value iteration<br/>+ PRISM export]
 
 1. Symbolic model checking (``nuxmv`` mode)
 -------------------------------------------
@@ -56,31 +55,61 @@ stateful monitor that runs alongside the BT and fires a configured
 on-robot deployment where exhaustive verification is either
 infeasible or complemented by runtime safety nets.
 
-..
-   Reserved placeholder for a future probabilistic strategy.
-   Uncomment the block below (remove the outer ``..`` marker and
-   de-indent) when the PCTL / DTMC back-end lands.
-..
-   4. Probabilistic verification *(reserved)*
-   ------------------------------------------
+4. Probabilistic verification (``prism`` mode)
+----------------------------------------------
 
-   .. note::
+Answers quantitative questions such as :math:`\Pr[F^{\le H}\,\mathrm{goal}]`
+on an *interval behavior tree* (IBT): a stochastic behavior tree whose
+probabilistic leaves carry closed probability intervals rather than point
+probabilities.
 
-      This section is a **placeholder**. It marks the extension point for
-      strategies that answer quantitative questions like
-      :math:`\Pr[F\,\mathrm{goal}] \ge 0.9` or
-      :math:`\Pr[G\,\neg\mathrm{unsafe}] \le 0.01`.
+Two new leaf types extend the DSL:
 
-   A probabilistic strategy would:
+- ``interval_check`` --- succeeds with some unknown :math:`p` in a declared
+  box :math:`[p_{lo}, p_{hi}]`, leaving the state unchanged. The failure
+  branch carries the exact complement :math:`[1-p_{hi}, 1-p_{lo}]`, so the
+  two outcomes stay coupled.
+- ``interval_action`` --- a set of branches, each with its own box, update
+  and returned status. One branch of a two-branch action may declare
+  ``complement`` instead of a box.
 
-   - Accept the same ``.tree`` input (with an explicit stochastic-leaf
-     extension to the DSL).
-   - Emit a DTMC / MDP / PRISM / Storm model from the internal IR.
-   - Discharge PCTL queries rather than CTL/LTL.
+.. code-block:: text
 
-   The core pipeline (parser → validator → IR) is fully reusable; only a
-   new back-end analogous to ``dsl_to_nuxmv`` / ``dsl_to_python`` would be
-   needed.
+   interval_checks {
+       interval_check {
+           sensor_healthy
+           arguments {}
+           read_variables {}
+           probability { [0.90, 0.98] }
+       }
+   }
+
+Why intervals? Probability estimates from trials, manufacturer envelopes or
+learned modules rarely justify choosing one exact value, and a certificate
+computed from a single point probability may be stronger than the
+calibration supports. An IBT reports a **certified interval**
+:math:`[P_{\min}, P_{\max}]` instead of one number.
+
+The back-end:
+
+- builds the IBT from the ``.tree`` model, then compiles **only the
+  reachable fragment** of the induced *interval Markov chain* (IMC), so the
+  IMC is never materialised in full;
+- discharges bounded reachability by robust value iteration run directly on
+  the tree;
+- reads each ``INVARSPEC`` in the model as a reachability target;
+- exports the compiled chain as PRISM (an interval-annotated model plus a
+  midpoint DTMC that stock PRISM can check) for cross-validation.
+
+.. code-block:: bash
+
+   behaverify prism examples/IntervalBT/delivery.tree ./output --horizon 12
+
+Known limitations: arrays, ``NEURAL`` variables, ``parallel`` composites and
+the ``X_is_Y`` / ``one_shot`` decorators are not supported, and each is
+rejected by name rather than silently mis-modelled. (``X_is_Y`` is not in
+general an injective status relabelling, so it is not an inverter under the
+IBT semantics.)
 
 Summary
 -------
@@ -104,10 +133,7 @@ Summary
      - per trace
      - any size
      - yes, per trace
-
-.. Reserved row for future probabilistic strategy; uncomment to restore:
-..
-   * - Probabilistic *(reserved)*
-     - exact
-     - tbd
+   * - Probabilistic (``prism``)
+     - certified interval
+     - millions of states
      - yes, natively

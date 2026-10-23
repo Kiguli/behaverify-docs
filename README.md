@@ -132,6 +132,7 @@ The first argument to BehaVerify is the mode. Currently available modes (not cas
 - [Haskell](#haskell-mode)
 - [LaTeX](#latex-mode)
 - [nuXmv](#nuxmv-mode)
+- [prism](#prism-mode)
 - [Python](#python-mode)
 - [trace](#trace-mode)
 
@@ -267,6 +268,23 @@ where
 - *no\_checks* : OPTIONAL. FLAG. If set, BehaVerify will skip grammar checking. As a result, files will be produced more quickly. Grammar checking is used to provide readable errors that explain why a model does not work. If a model\_file contains no errors, these may be safely ignored. If a model\_file contains errors and this is omitted, BehaVerify may crash in unexpected ways, or the output may not function correctly.
 - *record\_times* : OPTIONAL. String (Filepath). If included, BehaVerify will write how long the process took to a the specified file.
 - *use\_encoding* : OPTIONAL. String. One of ('naive' or 'fastforwarding') (case insensitive). Default is 'fastforwarding'. Changes what encoding is used for nuXmv.
+- *overwrite* : OPTIONAL. Flag. If set, BehaVerify will overwrite existing files.
+
+
+
+## PRISM mode
+This mode verifies an *interval behavior tree* (IBT): a stochastic behavior tree whose probabilistic leaves carry closed probability intervals instead of point probabilities. Rather than a single probability, it reports a **certified interval** `[P_min, P_max]` for bounded reachability.
+```
+python3 -m behaverify prism ./examples/IntervalBT/delivery.tree ../behaverify_example_prism/ --horizon 12
+```
+The model must declare at least one `interval_check` or `interval_action` leaf, and each `INVARSPEC` in the model is read as a reachability target. BehaVerify compiles only the reachable fragment of the induced interval Markov chain (IMC), runs robust value iteration directly on the tree, and exports the result as PRISM (an interval-annotated model plus a midpoint DTMC that stock PRISM can check).
+
+### PRISM Mode Options
+- *horizon* : OPTIONAL. Integer. Default is 10. The bound `H` in `P[F<=H target]`.
+- *max\_states* : OPTIONAL. Integer. Default is 1000000. BehaVerify aborts if the reachable state space exceeds this.
+- *output\_name* : OPTIONAL. String. Stem for the written files. Defaults to the model file name.
+- *recursion\_limit* : OPTIONAL. Integer. Increases the Python recursion limit for deep models.
+- *no\_checks* : OPTIONAL. Flag. Skips grammar validation.
 - *overwrite* : OPTIONAL. Flag. If set, BehaVerify will overwrite existing files.
 
 

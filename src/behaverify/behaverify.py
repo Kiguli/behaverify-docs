@@ -19,6 +19,7 @@ from behaverify.dsl_to_haskell import dsl_to_haskell
 from behaverify.dsl_to_latex import dsl_to_latex
 from behaverify.dsl_to_nuxmv import dsl_to_nuxmv
 from behaverify.dsl_to_python import dsl_to_python
+from behaverify.dsl_to_prism import dsl_to_prism
 from behaverify.counter_trace import counter_trace
 from behaverify.grid_world_draw.parse_nuxmv_output import handle_file as grid_world_draw_nuxmv_output
 from behaverify.grid_world_draw.parse_python_output import handle_file as grid_world_draw_python_output
@@ -467,6 +468,7 @@ Available modes:
   haskell   Generate functional Haskell implementation
   latex     Generate TikZ diagram for behavior tree visualization
   nuxmv     Generate nuXmv model and run formal verification
+  prism     Verify an interval behavior tree (certified probability intervals)
   python    Generate executable Python implementation
   trace     Visualize nuXmv counter-example traces
 
@@ -474,6 +476,7 @@ Examples:
   behaverify nuxmv model.tree ./output --generate --ltl --nuxmv_path ../nuXmv
   behaverify python model.tree ./output
   behaverify latex model.tree ./output/diagram.tex
+  behaverify prism model.tree ./output --horizon 12
   behaverify nuxmv model.tree ./output --generate --invar --ctl --nuxmv_path ../nuXmv
 
 Use "behaverify <mode> --help" for mode-specific options.
@@ -484,7 +487,7 @@ For detailed documentation: https://github.com/verivital/behaverify
     # - If no args or just --help/--version, show main help
     # - If valid mode with --help, let mode parser handle it
     effective_argv = argv if argv is not None else sys.argv[1:]
-    valid_modes = ('cpp', 'grid', 'gui', 'haskell', 'latex', 'nuxmv', 'python', 'trace')
+    valid_modes = ('cpp', 'grid', 'gui', 'haskell', 'latex', 'nuxmv', 'prism', 'python', 'trace')
 
     # Check if we should show main help (no mode specified, or --help/--version before mode)
     show_main_help = (
@@ -502,7 +505,7 @@ For detailed documentation: https://github.com/verivital/behaverify
         )
         arg_parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
         arg_parser.add_argument('mode',
-            help='Operation mode (cpp, grid, gui, haskell, latex, nuxmv, python, trace)')
+            help='Operation mode (cpp, grid, gui, haskell, latex, nuxmv, prism, python, trace)')
         args = arg_parser.parse_args(argv)
         # If we get here with an invalid mode, the unknown mode handler below will catch it
 
@@ -750,6 +753,46 @@ Examples:
             run_nuxmv(nuxmv_path, command_file, input_file, output_file, error_file)
             if args.verbose:
                 print_verification_summary(output_file, args.model_file)
+    elif main_mode == 'prism':
+        prism_epilog = '''
+Examples:
+  # Certified interval for P[F<=12 target] on an interval behavior tree:
+  behaverify prism examples/IntervalBT/delivery.tree ./output --horizon 12
+
+The model must contain at least one interval_check or interval_action leaf.
+Each INVARSPEC in the model is read as a bounded-reachability target; the
+back-end reports [P_min, P_max] rather than a single probability, and writes
+the compiled interval Markov chain out as PRISM for cross-checking.
+'''
+        arg_parser = argparse.ArgumentParser(
+            prog='behaverify prism',
+            description='Compile an interval behavior tree to an interval Markov chain and verify it',
+            epilog=prism_epilog,
+            formatter_class=argparse.RawDescriptionHelpFormatter
+        )
+        arg_parser.add_argument('mode', help=argparse.SUPPRESS)
+        arg_parser.add_argument('model_file', help='Input .tree file')
+        arg_parser.add_argument('location', help='Output directory')
+        arg_parser.add_argument('--output_name', default=None,
+            help='Stem for the written files (default: the model file name)')
+        arg_parser.add_argument('--horizon', type=int, default=10,
+            help='The bound H in P[F<=H target] (default: 10)')
+        arg_parser.add_argument('--max_states', type=int, default=10 ** 6,
+            help='Abort if the reachable state space exceeds this (default: 1000000)')
+        arg_parser.add_argument('--recursion_limit', type=int, default=0,
+            help='Increase Python recursion limit for complex models (default: 0 = no change)')
+        arg_parser.add_argument('--overwrite', action='store_true',
+            help='Overwrite existing files')
+        arg_parser.add_argument('--no_checks', action='store_true',
+            help='Skip grammar validation (faster but dangerous)')
+        args = arg_parser.parse_args(argv)
+        input_file = args.model_file
+        output_name = (args.output_name if args.output_name is not None
+                       else os.path.splitext(os.path.basename(input_file))[0])
+        verify_location('prism', args.location, args.overwrite)
+        dsl_to_prism(metamodel_file, args.model_file, output_name,
+                     os.path.join(args.location, 'prism'), args.horizon,
+                     args.max_states, args.recursion_limit, args.no_checks)
     elif main_mode == 'python':
         arg_parser = argparse.ArgumentParser(
             prog='behaverify python',
@@ -809,7 +852,7 @@ Examples:
     else:
         error_exit(
             f"Unknown mode: '{main_mode}'",
-            "Available modes: cpp, grid, gui, haskell, latex, nuxmv, python, trace\n"
+            "Available modes: cpp, grid, gui, haskell, latex, nuxmv, prism, python, trace\n"
             "Use 'behaverify <mode> --help' for mode-specific options."
         )
 

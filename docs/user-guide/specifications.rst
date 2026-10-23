@@ -144,9 +144,10 @@ nuXmv. Stochasticity in the environment --- a noisy sensor, a random
 action outcome --- is encoded as *non-deterministic* choice, so the
 verifier proves the property against the worst case.
 
-..
-   Closing pointer to the planned probabilistic strategy is
-   commented out while that work is parked.
-..
-   See :doc:`verification-strategies` for where probabilistic
-   strategies are planned to slot in.
+When you want a *quantitative* answer instead of a worst-case one, give the
+noisy leaves explicit probability intervals and use the ``prism`` back-end:
+an ``INVARSPEC`` is then read as a bounded-reachability target and
+discharged to a certified interval :math:`[P_{\min}, P_{\max}]`.
+
+See :doc:`verification-strategies` for the probabilistic strategy and the
+interval-leaf syntax.

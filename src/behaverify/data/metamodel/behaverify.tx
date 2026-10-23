@@ -33,6 +33,12 @@ BehaviorModel:
     'actions' '{'
     action_nodes *= action_node
     '}' ('end_actions')?
+    ('interval_checks' '{'
+    interval_check_nodes *= interval_check_node
+    '}' ('end_interval_checks')?)?
+    ('interval_actions' '{'
+    interval_action_nodes *= interval_action_node
+    '}' ('end_interval_actions')?)?
     'sub_trees' '{'
     sub_trees *= sub_tree
     '}' ('end_sub_trees')?
@@ -111,7 +117,9 @@ node:
     (name = ID ':')?
     ((leaf = [check_node]) |
     (leaf = [action_node]) |
-    (leaf = [check_environment_node]))
+    (leaf = [check_environment_node]) |
+    (leaf = [interval_check_node]) |
+    (leaf = [interval_action_node]))
     '{'
     arguments *= code_statement[',']
     '}'
@@ -154,6 +162,51 @@ node:
     post_update_statements *= statement
     '}' ('end_update')?
     '}' ('end_action')?
+;
+    //--------------------SEC:INTERVAL_NODES----------------------
+    //Probabilistic leaves of an interval behavior tree (IBT).  An interval
+    //leaf carries a closed probability interval [p_lo, p_hi] rather than a
+    //point probability, so a certificate computed from it is never stronger
+    //than the calibration justifies.  Consumed by dsl_to_prism.
+    //ipchk([p_lo,p_hi]) returns success with some unknown p in the box and
+    //failure with the exact complement [1-p_hi, 1-p_lo]; the state is
+    //unchanged, so an interval_check has no write_variables.
+    interval_check_node:
+    (node_type = 'interval_check') '{'
+    name = ID
+    'arguments' '{' arguments *= argument_declaration[','] '}' ('end_arguments')?
+    'read_variables' '{' read_variables *= [variable][',']  '}' ('end_read_variables')?
+    'probability' '{' '[' prob_min = code_statement ',' prob_max = code_statement ']' '}' ('end_probability')?
+    '}' ('end_interval_check')?
+;
+    //ipact(([p_lo_i,p_hi_i], u_i, r_i)_i) picks branch i with some unknown
+    //p_i in the i-th box, applies that branch's update and returns its
+    //status.  Exactly one branch of a two-branch interval_action may omit its
+    //box, in which case it carries the complementary mass of the other.
+    interval_action_node:
+    (node_type = 'interval_action') '{'
+    name = ID
+    'arguments' '{' arguments *= argument_declaration[','] '}' ('end_arguments')?
+    'local_variables' '{' local_variables *= [variable][','] '}' ('end_local_variables')?
+    'read_variables' '{' read_variables *= [variable][','] '}' ('end_read_variables')?
+    'write_variables' '{' write_variables *= [variable][','] '}' ('end_write_variables')?
+    'initial_values' '{'
+    init_statements *= variable_statement_initial
+    '}' ('end_initial_values')?
+    'branches' '{'
+    branches += interval_branch
+    '}' ('end_branches')?
+    '}' ('end_interval_action')?
+;
+    interval_branch:
+    'branch' '{'
+    ('[' prob_min = code_statement ',' prob_max = code_statement ']' | complement = 'complement')
+    'update' '{'
+    pre_update_statements *= statement
+    return_statement = return_statement
+    post_update_statements *= statement
+    '}' ('end_update')?
+    '}' ('end_branch')?
 ;
     //--------------------SEC:VARIABLES---------------------------
     variable:

@@ -32,7 +32,7 @@
 behaverify/
 ├── src/behaverify/              # Core source code
 │   ├── behaverify.py            # Main CLI entry point
-│   ├── dsl_to_*.py              # Code generators (nuxmv, python, cpp, haskell, latex)
+│   ├── dsl_to_*.py              # Code generators (nuxmv, prism, python, cpp, haskell, latex)
 │   ├── behaverify_common.py     # Shared utilities
 │   ├── node_creator.py          # Behavior tree node management
 │   ├── check_grammar.py         # DSL validation and type checking
@@ -41,6 +41,7 @@ behaverify/
 │   │   ├── haskell_files/       # Haskell templates
 │   │   ├── tikz_files/          # LaTeX TikZ templates
 │   │   └── tick_overwrite/      # Python tick override behavior
+│   ├── probabilistic/           # Interval behavior tree core (tickdist: IBT -> IMC)
 │   ├── monitor/                 # Runtime monitoring code generation
 │   ├── grid_world_draw/         # Grid world trace visualization
 │   └── variations/              # Alternative encodings (naive, etc.)
@@ -236,7 +237,12 @@ behaverify haskell examples/Collatz/collatz.tree ./output
 behaverify latex examples/Collatz/collatz_small.tree ./output/diagram.tex
 ```
 
-6. **Trace Mode** - Visualize verification traces
+6. **PRISM Mode** - Verify an interval behavior tree (certified probability intervals)
+```bash
+behaverify prism examples/IntervalBT/delivery.tree ./output --horizon 12
+```
+
+7. **Trace Mode** - Visualize verification traces
 ```bash
 # First generate a trace with nuXmv
 behaverify nuxmv examples/Collatz/collatz.tree ./output --generate --invar --nuxmv_path ../nuXmv
@@ -244,7 +250,7 @@ behaverify nuxmv examples/Collatz/collatz.tree ./output --generate --invar --nux
 behaverify trace examples/Collatz/collatz.tree ./output/nuxmv/collatz_output.txt ./output/
 ```
 
-7. **Grid Mode** - Render grid-world traces
+8. **Grid Mode** - Render grid-world traces
 ```bash
 behaverify grid nuxmv ./trace_file.txt ./output 10 10
 ```
@@ -357,6 +363,14 @@ pytest tests/test_behaverify.py::test_specific_function
 - Handles temporal logic specifications
 - Implements fast-forwarding encoding (default) and naive encoding
 - Complex variable staging and update logic
+
+**`dsl_to_prism.py`**
+- Probabilistic back-end for interval behavior trees (IBTs)
+- Compiles the reachable fragment of an interval Markov chain (IMC)
+- Robust value iteration for bounded reachability -> certified `[P_min, P_max]`
+- Exports PRISM (interval-annotated + midpoint DTMC) and PCTL properties
+- Reads each `INVARSPEC` as a reachability target
+- Core semantics vendored in `probabilistic/tickdist.py` (stdlib only, 53 self-checks)
 
 **`dsl_to_python.py` (1,633 lines)**
 - Generates executable Python code
@@ -701,6 +715,22 @@ BehaVerify is actively used in academic research. Key publications:
 ---
 
 ## Quick Reference
+
+### Interval Behavior Trees (probabilistic back-end)
+
+An IBT is a stochastic BT whose probabilistic leaves carry closed probability
+intervals instead of point probabilities. Two leaf types:
+
+- `interval_check` - succeeds with unknown p in `[p_lo, p_hi]`, state unchanged;
+  the failure branch carries the exact complement (the outcomes stay coupled)
+- `interval_action` - branches, each with a box, update and fixed status; one
+  branch of a two-branch action may say `complement` instead of a box
+
+Declared in optional `interval_checks { }` / `interval_actions { }` sections.
+See `examples/IntervalBT/` and `tests/test_probabilistic.py`.
+
+Unsupported here (rejected by name): arrays, `NEURAL` variables, `parallel`
+composites, `X_is_Y` / `one_shot` decorators.
 
 ### File Extensions
 

@@ -82,6 +82,29 @@ Generate a pure-functional Haskell implementation.
 
 Uses the templates in ``src/behaverify/data/haskell_files/``.
 
+``prism``
+---------
+
+Verify an *interval behavior tree* -- a stochastic BT whose probabilistic
+leaves carry probability intervals -- and report a certified interval rather
+than a single probability.
+
+.. code-block:: bash
+
+   python -m behaverify prism examples/IntervalBT/delivery.tree ./out --horizon 12
+
+The model must declare at least one ``interval_check`` or
+``interval_action`` leaf. Each ``INVARSPEC`` is read as a
+bounded-reachability target. Writes an interval-annotated IMC, a midpoint
+DTMC that stock PRISM can check, and a ``.props.pctl`` property file.
+
+Options:
+
+- ``--horizon H`` -- the bound in ``P[F<=H target]`` (default 10).
+- ``--max_states N`` -- abort above ``N`` reachable states.
+
+See :doc:`verification-strategies` for the semantics.
+
 ``latex``
 ---------
 

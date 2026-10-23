@@ -1,0 +1,119 @@
+#{
+    An interval behavior tree (IBT): a stochastic behavior tree whose
+    probabilistic leaves carry closed probability *intervals* instead of point
+    probabilities.
+
+    A drone ferries a parcel along a corridor of five cells (pos 0..4) and must
+    reach the far end. Each tick the tree
+      1. succeeds immediately if the parcel is already delivered,
+      2. otherwise gates on a downward-facing sensor that is healthy with some
+         probability in [0.90, 0.98] -- we calibrated it from flight logs and
+         are not willing to claim a single exact number, and
+      3. if the sensor is healthy, steps forward. The step lands with some
+         probability in [0.80, 0.92]; the complementary mass is a stall that
+         marks the drone as having lost track.
+
+    Neither 0.98 nor 0.90 is "the" sensor reliability, and a certificate
+    computed from one point value would be stronger than the calibration
+    justifies. Verify this with:
+
+        behaverify prism examples/IntervalBT/delivery.tree ./output --horizon 12
+
+    The back-end compiles the reachable fragment of the induced interval
+    Markov chain, runs robust value iteration on the tree, and reports a
+    certified interval [P_min, P_max] for P[F<=12 delivered].
+}#
+
+configuration {}
+enumerations {}
+constants {
+    goal := 4
+}
+variables {
+    variable { bl pos VAR [0, 4] assign { result { 0 } } }
+    variable { bl lost_track VAR BOOLEAN assign { result { False } } }
+}
+environment_update {}
+checks {
+    check {
+        delivered
+        arguments {}
+        read_variables { pos }
+        condition { (gte, pos, goal) }
+    }
+}
+environment_checks {}
+actions {}
+interval_checks {
+    #{ ipchk: succeeds with some unknown p in [0.90, 0.98], state unchanged. }#
+    interval_check {
+        sensor_healthy
+        arguments {}
+        read_variables {}
+        probability { [0.90, 0.98] }
+    }
+}
+interval_actions {
+    #{
+        ipact: two branches. The first lands the step; the second declares
+        'complement', so it carries exactly the complementary mass of the
+        first -- the two are the +1 and -1 signs of one leaf parameter rather
+        than two independent ones.
+    }#
+    interval_action {
+        step_forward
+        arguments {}
+        local_variables {}
+        read_variables { pos }
+        write_variables { pos, lost_track }
+        initial_values {}
+        branches {
+            branch {
+                [0.80, 0.92]
+                update {
+                    variable_statement {
+                        pos
+                        assign {
+                            case { (lt, pos, goal) } result { (add, pos, 1) }
+                            result { pos }
+                        }
+                    }
+                    return_statement { result { success } }
+                }
+            }
+            branch {
+                complement
+                update {
+                    variable_statement {
+                        lost_track
+                        assign { result { True } }
+                    }
+                    return_statement { result { failure } }
+                }
+            }
+        }
+    }
+}
+sub_trees {}
+tree {
+    composite {
+        mission
+        selector
+        children {
+            delivered {}
+            composite {
+                advance
+                sequence
+                children {
+                    sensor_healthy {}
+                    step_forward {}
+                }
+            }
+        }
+    }
+}
+tick_prerequisite { True }
+specifications {
+    #{ Read by the probabilistic back-end as the reachability target. }#
+    INVARSPEC { (gte, pos, goal) }
+}
